@@ -22,8 +22,9 @@
     </div>
 
     <!-- Loading Indicator -->
-    <div id="loading" class="text-center py-10 text-blue-500 font-medium animate-pulse">
-        กำลังโหลดข้อมูลเรียลไทม์...
+    <div id="loading" class="text-center py-10">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
+        <div id="loading-text" class="text-blue-500 font-medium animate-pulse">กำลังโหลดข้อมูลเรียลไทม์...</div>
     </div>
 
     <div id="dashboard-content" class="hidden">
@@ -62,71 +63,87 @@
     </div>
 
     <script>
-        // === การตั้งค่า API (เอา URL จาก Apps Script มาใส่ตรงนี้) ===
-        // const API_URL = "https://script.google.com/macros/s/AKfycbztjxx16qZoUGTpCuj3DPV-BM4AT_9nM8EP75JTE_EX9__q2X0QQBacezdPbqjgdDKP/exec";
+        // === การตั้งค่า API URL ของคุณ ===
+        const API_URL = "https://script.google.com/macros/s/AKfycbztjxx16qZoUGTpCuj3DPV-BM4AT_9nM8EP75JTE_EX9__q2X0QQBacezdPbqjgdDKP/exec";
         
-        // ฟังก์ชันสำหรับดึงข้อมูลและแสดงผล
         async function loadData() {
             try {
-                // หากเชื่อม API จริง ให้ใช้โค้ดด้านล่างนี้
-                // const response = await fetch(API_URL);
-                // const rawData = await response.json();
+                // ดึงข้อมูลจาก API แบบ Real-time
+                const response = await fetch(API_URL);
                 
-                // ข้อมูลจำลองสำหรับแสดงหน้าเว็บ (Mock Data ให้เหมือนภาพ)
-                const rawData = [
-                    { machine: 'Sublimation', period1: 101, period2: 11 },
-                    { machine: 'Laser', period1: 1194, period2: 1902 },
-                    { machine: 'UV DTF', period1: 1406, period2: 1180 }
-                ];
+                // ตรวจสอบว่า HTTP status เป็น 200 OK หรือไม่
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const rawData = await response.json();
+                
+                // ตรวจสอบว่ามีข้อมูลกลับมาหรือไม่
+                if (!rawData || rawData.length === 0) {
+                    throw new Error('ไม่พบข้อมูลในตาราง หรือการดึงช่วงข้อมูลใน Apps Script ผิดพลาด');
+                }
 
                 renderDashboard(rawData);
             } catch (error) {
                 console.error("Error fetching data:", error);
-                document.getElementById('loading').innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+                
+                // เปลี่ยนข้อความแจ้งเตือนเมื่อเกิด Error
+                document.getElementById('loading').innerHTML = `
+                    <div class="text-red-500 font-bold mb-2">❌ เกิดข้อผิดพลาดในการดึงข้อมูล</div>
+                    <div class="text-sm text-slate-600">กรุณาตรวจสอบลิงก์ Apps Script, การตั้งค่าคอลัมน์ หรือการตั้งค่าสิทธิ์ให้เป็น "Anyone"</div>
+                    <div class="text-xs text-slate-400 mt-2">รายละเอียด: \${error.message}</div>
+                `;
             }
         }
 
         function formatNumber(num) {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            // ป้องกัน error ถ้าข้อมูลไม่ใช่ตัวเลข
+            const val = Number(num);
+            if(isNaN(val)) return num;
+            return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
 
         function renderDashboard(data) {
-            // ซ่อน Loading และแสดง Content
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
 
             const tbody = document.getElementById('table-body');
             const kpiContainer = document.getElementById('kpi-cards');
             
-            // ตัวแปรสำหรับสร้างกราฟ
+            // เคลียร์ข้อมูลเก่าออกก่อน (เผื่อมีการโหลดซ้ำ)
+            tbody.innerHTML = '';
+            kpiContainer.innerHTML = '';
+            
             const labels = [];
             const dataPeriod1 = [];
             const dataPeriod2 = [];
 
             data.forEach((item, index) => {
-                const diff = item.period2 - item.period1;
-                const diffPercent = ((diff / item.period1) * 100).toFixed(1);
+                // แปลงค่าเป็นตัวเลขเพื่อให้คำนวณได้
+                const p1 = Number(item.period1) || 0;
+                const p2 = Number(item.period2) || 0;
+                
+                const diff = p2 - p1;
+                // ป้องกันหารด้วย 0
+                const diffPercent = p1 !== 0 ? ((diff / p1) * 100).toFixed(1) : 0;
                 
                 const isPositive = diff >= 0;
                 const colorClass = isPositive ? 'text-green-600' : 'text-red-500';
                 const sign = isPositive ? '+' : '';
                 const arrowIcon = isPositive ? '▲' : '▼';
                 
-                // แถบสีพื้นหลังสลับบรรทัดแบบในรูป (ฟ้าอ่อน / ขาว / ฟ้าอ่อน)
                 const rowBg = index % 2 === 0 ? 'bg-blue-50/30' : 'bg-white';
 
-                // 1. สร้างแถวในตาราง
                 tbody.innerHTML += \`
                     <tr class="\${rowBg} text-base">
-                        <td class="px-6 py-4 font-bold text-[#3b5998]">\${item.machine}</td>
-                        <td class="px-6 py-4 text-slate-700">\${formatNumber(item.period1)}</td>
-                        <td class="px-6 py-4 text-slate-700">\${formatNumber(item.period2)}</td>
+                        <td class="px-6 py-4 font-bold text-[#3b5998]">\${item.machine || 'ไม่ระบุชื่อ'}</td>
+                        <td class="px-6 py-4 text-slate-700">\${formatNumber(p1)}</td>
+                        <td class="px-6 py-4 text-slate-700">\${formatNumber(p2)}</td>
                         <td class="px-6 py-4 font-medium \${colorClass}">\${sign}\${formatNumber(diff)}</td>
                         <td class="px-6 py-4 font-bold \${colorClass}">\${arrowIcon} \${Math.abs(diffPercent)}%</td>
                     </tr>
                 \`;
 
-                // 2. สร้าง KPI Cards
                 const cardBorder = isPositive ? 'border-l-4 border-l-green-500' : 'border-l-4 border-l-red-500';
                 const cardIcon = isPositive 
                     ? \`<svg class="w-6 h-6 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"></path></svg>\`
@@ -138,37 +155,41 @@
                     <div class="bg-white rounded-lg p-4 border border-slate-200 card-shadow flex items-center gap-4 \${cardBorder}">
                         <div class="flex-shrink-0">\${cardIcon}</div>
                         <div>
-                            <div class="text-xs text-slate-500 mb-1">\${item.machine}</div>
+                            <div class="text-xs text-slate-500 mb-1">\${item.machine || 'ไม่ระบุชื่อ'}</div>
                             <div class="font-bold text-lg \${colorClass}">\${cardStatusText} (\${sign}\${formatNumber(diff)})</div>
                         </div>
                     </div>
                 \`;
 
-                // เตรียมข้อมูลสำหรับกราฟ
-                labels.push(item.machine);
-                dataPeriod1.push(item.period1);
-                dataPeriod2.push(item.period2);
+                labels.push(item.machine || 'N/A');
+                dataPeriod1.push(p1);
+                dataPeriod2.push(p2);
             });
 
-            // 3. สร้างกราฟแท่ง
             const ctx = document.getElementById('comparisonChart').getContext('2d');
-            new Chart(ctx, {
+            
+            // ลบกราฟเดิมทิ้งถ้ามี (ป้องกัน error ตอนโหลดซ้ำ)
+            if (window.myChart instanceof Chart) {
+                window.myChart.destroy();
+            }
+
+            window.myChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [
                         {
-                            label: '13-19 พ.ค.',
+                            label: 'ช่วงแรก',
                             data: dataPeriod1,
-                            backgroundColor: '#cbd5e1', // Slate 300
+                            backgroundColor: '#cbd5e1',
                             borderRadius: 4,
                             barPercentage: 0.6,
                             categoryPercentage: 0.4
                         },
                         {
-                            label: '20-26 พ.ค.',
+                            label: 'ช่วงที่สอง',
                             data: dataPeriod2,
-                            backgroundColor: '#3b82f6', // Blue 500
+                            backgroundColor: '#3b82f6',
                             borderRadius: 4,
                             barPercentage: 0.6,
                             categoryPercentage: 0.4
@@ -191,7 +212,6 @@
                     },
                     animation: {
                         onComplete: function() {
-                            // การเขียนตัวเลขไว้บนแท่งกราฟ
                             const chartInstance = this;
                             const ctx = chartInstance.ctx;
                             ctx.font = Chart.helpers.fontString(11, 'bold', 'Sarabun');
@@ -212,7 +232,6 @@
             });
         }
 
-        // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
         window.onload = loadData;
     </script>
 </body>
