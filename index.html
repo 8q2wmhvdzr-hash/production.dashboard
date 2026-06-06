@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สรุปและเปรียบเทียบการผลิต</title>
+    <title>สรุปและเปรียบเทียบการผลิต V7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
@@ -23,63 +23,77 @@
         กำลังโหลดข้อมูล...
     </div>
 
-    <!-- Title & Date Controls -->
+    <!-- Title & Controls -->
     <div class="bg-white p-6 rounded-xl shadow-custom mb-8 border border-slate-100">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-bold text-slate-800 mb-2">เปรียบเทียบจำนวนการผลิต</h1>
             <div class="h-1 w-16 bg-blue-500 mx-auto rounded"></div>
         </div>
         
-        <div class="flex flex-col md:flex-row justify-center items-center gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <label class="font-bold text-slate-700">🗓️ เลือกช่วงเวลา (ปัจจุบัน):</label>
-            <input type="date" id="startDate" class="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-            <span class="text-slate-400">ถึง</span>
-            <input type="date" id="endDate" class="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
-            <button onclick="applyFilters()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-md transition-colors">อัปเดตข้อมูล</button>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
+            <!-- Period 1 Control -->
+            <div>
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-400"></span> ช่วงเวลาที่ 1 (อดีต)</h3>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="date" id="p1StartDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 focus:outline-none">
+                    <span class="text-slate-400 self-center hidden sm:block">ถึง</span>
+                    <input type="date" id="p1EndDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Period 2 Control -->
+            <div>
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span> ช่วงเวลาที่ 2 (ปัจจุบัน)</h3>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="date" id="p2StartDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <span class="text-slate-400 self-center hidden sm:block">ถึง</span>
+                    <input type="date" id="p2EndDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+            </div>
         </div>
-        <p class="text-center text-xs text-slate-400 mt-3">*ระบบจะนำช่วงเวลาที่คุณเลือก ไปเปรียบเทียบกับช่วงเวลาก่อนหน้าให้อัตโนมัติ</p>
+
+        <!-- Machine Selection -->
+        <div class="mt-6 border-t border-slate-200 pt-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-slate-700">⚙️ เลือกเครื่องจักรที่ต้องการเปรียบเทียบ:</h3>
+                <div class="space-x-2">
+                    <button onclick="selectAllMachines(true)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">เลือกทั้งหมด</button>
+                    <span class="text-slate-300">|</span>
+                    <button onclick="selectAllMachines(false)" class="text-xs text-slate-500 hover:text-slate-700 font-medium">ล้างการเลือก</button>
+                </div>
+            </div>
+            <div id="machine-filters" class="flex flex-wrap gap-3">
+                <!-- Checkboxes injected here -->
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-center">
+            <button onclick="applyFilters()" class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-md transition-colors w-full md:w-auto">ประมวลผลข้อมูล</button>
+        </div>
     </div>
 
     <!-- Main Content -->
     <div id="dashboard-content" class="hidden space-y-8">
         
-        <!-- Section 1: Summary -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-xl shadow-custom border border-slate-100 flex items-center justify-between">
-                <div>
-                    <h3 class="text-slate-500 font-semibold text-sm">ปริมาณงานทั้งหมด (ทุกสถานะ)</h3>
-                    <p class="text-xs text-slate-400 mt-1">ในช่วงเวลาที่เลือก</p>
-                </div>
-                <div class="text-3xl font-bold text-blue-600" id="sum-jobs">0 <span class="text-sm text-slate-500 font-medium">งาน</span></div>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-custom border border-slate-100 flex items-center justify-between">
-                <div>
-                    <h3 class="text-slate-500 font-semibold text-sm">ยอดผลิตรวมทั้งหมด (Q'TY)</h3>
-                    <p class="text-xs text-slate-400 mt-1">ในช่วงเวลาที่เลือก</p>
-                </div>
-                <div class="text-3xl font-bold text-indigo-600" id="sum-qty">0 <span class="text-sm text-slate-500 font-medium">ชิ้น</span></div>
-            </div>
-        </div>
-
-        <!-- Section 2: Comparison (Mockup Style) -->
+        <!-- Section 1: Comparison (Mockup Style) -->
         <div class="bg-white p-6 md:p-8 rounded-xl shadow-custom border border-slate-100">
             <div class="mb-4">
                 <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <span class="text-blue-500">📊</span> ตารางเปรียบเทียบจำนวนการผลิต
                 </h2>
-                <p class="text-xs text-slate-500">เงื่อนไข: สรุปยอดแยกตามเครื่องจักร | <span class="text-red-500">ไม่รวมงาน "ขึ้นตัวอย่าง"</span></p>
+                <p class="text-xs text-slate-500">เงื่อนไข: สรุปยอดแยกตามเครื่องจักรที่เลือก | <span class="text-red-500">ไม่รวมงาน "ขึ้นตัวอย่าง"</span></p>
             </div>
 
             <!-- The Table -->
-            <div class="rounded-lg overflow-hidden table-shadow mb-6 border border-[#cbd5e1]">
-                <table class="w-full text-left border-collapse">
+            <div class="rounded-lg overflow-x-auto table-shadow mb-6 border border-[#cbd5e1]">
+                <table class="w-full text-left border-collapse min-w-[600px]">
                     <thead>
                         <tr class="th-bg text-slate-600 text-sm border-b border-[#cbd5e1]">
                             <th class="px-6 py-4 font-bold border-r border-white/50">เครื่องจักร</th>
-                            <th class="px-6 py-4 font-bold border-r border-white/50" id="th-prev-date">อดีต</th>
-                            <th class="px-6 py-4 font-bold border-r border-white/50" id="th-curr-date">ปัจจุบัน</th>
-                            <th class="px-6 py-4 font-bold border-r border-white/50">ผลต่าง (ชิ้น)</th>
-                            <th class="px-6 py-4 font-bold">ผลต่าง (%)</th>
+                            <th class="px-6 py-4 font-bold border-r border-white/50 text-center" id="th-prev-date">ช่วงเวลาที่ 1</th>
+                            <th class="px-6 py-4 font-bold border-r border-white/50 text-center" id="th-curr-date">ช่วงเวลาที่ 2</th>
+                            <th class="px-6 py-4 font-bold border-r border-white/50 text-center">ผลต่าง (ชิ้น)</th>
+                            <th class="px-6 py-4 font-bold text-center">ผลต่าง (%)</th>
                         </tr>
                     </thead>
                     <tbody id="comparison-tbody" class="bg-white">
@@ -101,19 +115,19 @@
             </div>
         </div>
 
-        <!-- Section 3: Completed Jobs -->
+        <!-- Section 2: Completed Jobs -->
         <div class="bg-white p-6 md:p-8 rounded-xl shadow-custom border border-slate-100">
             <div class="mb-4 flex flex-col md:flex-row md:items-center justify-between">
                 <div>
                     <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <span class="text-green-500">✅</span> รายการงานที่ Completed
+                        <span class="text-green-500">✅</span> รายการงานที่ Completed <span class="text-sm font-normal text-slate-500">(ในช่วงเวลาที่ 2)</span>
                     </h2>
                     <p class="text-xs text-slate-500">เงื่อนไข: สถานะ = Completed | <span class="text-green-600">รวมงาน "ขึ้นตัวอย่าง" ด้วย</span></p>
                 </div>
             </div>
             
             <div class="overflow-x-auto max-h-96 overflow-y-auto rounded-lg border border-slate-200">
-                <table class="w-full text-left border-collapse text-sm">
+                <table class="w-full text-left border-collapse text-sm min-w-[600px]">
                     <thead class="sticky top-0 bg-slate-100 z-10">
                         <tr class="text-slate-600 font-bold text-xs uppercase border-b border-slate-200">
                             <th class="px-6 py-4">Job</th>
@@ -132,10 +146,10 @@
     </div>
 
     <script>
-        // === 1. ใส่ URL ของ Apps Script ตรงนี้ ===
         const API_URL = "https://script.google.com/macros/s/AKfycbywMDzF7GtAFrC7dMZXoE05dZeqFCnFZeON9CO1TZnvn1dR79wHk_mrN6Fx5Wc_Ox0/exec";
         
         let globalData = [];
+        let uniqueMachines = [];
         let compChartInstance = null;
         Chart.register(ChartDataLabels);
 
@@ -148,16 +162,36 @@
 
                 globalData = data;
                 
+                // Extract unique machines for checkboxes
+                const mSet = new Set();
+                globalData.forEach(r => {
+                    if (r.machine && r.machine.trim() !== '') mSet.add(r.machine.trim());
+                });
+                uniqueMachines = Array.from(mSet).sort();
+                renderMachineFilters();
+
                 // Set Default Dates
                 if(globalData.length > 0) {
                     const validDates = globalData.map(d => new Date(d.date)).filter(d => !isNaN(d));
                     validDates.sort((a,b) => a - b);
                     const maxDate = validDates[validDates.length - 1];
-                    const minDate = new Date(maxDate);
-                    minDate.setDate(minDate.getDate() - 6);
                     
-                    document.getElementById('endDate').value = maxDate.toISOString().split('T')[0];
-                    document.getElementById('startDate').value = minDate.toISOString().split('T')[0];
+                    // Period 2 (Current) = Last 7 days
+                    const p2End = new Date(maxDate);
+                    const p2Start = new Date(p2End);
+                    p2Start.setDate(p2Start.getDate() - 6);
+                    
+                    document.getElementById('p2EndDate').value = p2End.toISOString().split('T')[0];
+                    document.getElementById('p2StartDate').value = p2Start.toISOString().split('T')[0];
+
+                    // Period 1 (Past) = 7 days before Period 2
+                    const p1End = new Date(p2Start);
+                    p1End.setDate(p1End.getDate() - 1);
+                    const p1Start = new Date(p1End);
+                    p1Start.setDate(p1Start.getDate() - 6);
+
+                    document.getElementById('p1EndDate').value = p1End.toISOString().split('T')[0];
+                    document.getElementById('p1StartDate').value = p1Start.toISOString().split('T')[0];
                 }
 
                 document.getElementById('connection-status').className = "fixed top-4 right-4 px-4 py-2 rounded-full text-xs font-bold bg-green-100 text-green-800 shadow-md z-50";
@@ -172,6 +206,25 @@
             }
         }
 
+        function renderMachineFilters() {
+            const container = document.getElementById('machine-filters');
+            container.innerHTML = '';
+            uniqueMachines.forEach(m => {
+                const id = 'chk_' + m.replace(/[^a-zA-Z0-9]/g, '_');
+                container.innerHTML += `
+                    <label class="inline-flex items-center bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
+                        <input type="checkbox" value="${m}" class="machine-chk form-checkbox h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" checked>
+                        <span class="ml-2 text-sm font-medium text-slate-700">${m}</span>
+                    </label>
+                `;
+            });
+        }
+
+        function selectAllMachines(check) {
+            const checkboxes = document.querySelectorAll('.machine-chk');
+            checkboxes.forEach(cb => cb.checked = check);
+        }
+
         function formatD(dateObj) {
             const d = dateObj.getDate();
             const m = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][dateObj.getMonth()];
@@ -179,68 +232,82 @@
         }
 
         function applyFilters() {
-            const startStr = document.getElementById('startDate').value;
-            const endStr = document.getElementById('endDate').value;
-            if(!startStr || !endStr) return;
+            // Get Dates
+            const p1S_str = document.getElementById('p1StartDate').value;
+            const p1E_str = document.getElementById('p1EndDate').value;
+            const p2S_str = document.getElementById('p2StartDate').value;
+            const p2E_str = document.getElementById('p2EndDate').value;
 
-            const currS = new Date(startStr); currS.setHours(0,0,0,0);
-            const currE = new Date(endStr); currE.setHours(23,59,59,999);
-            
-            const diffTime = currE.getTime() - currS.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
-            
-            const prevE = new Date(currS); prevE.setDate(prevE.getDate() - 1); prevE.setHours(23,59,59,999);
-            const prevS = new Date(prevE); prevS.setDate(prevS.getDate() - diffDays); prevS.setHours(0,0,0,0);
+            if(!p1S_str || !p1E_str || !p2S_str || !p2E_str) {
+                alert("กรุณาเลือกวันที่ให้ครบทั้ง 2 ช่วงเวลา");
+                return;
+            }
 
-            document.getElementById('th-curr-date').innerText = `${formatD(currS)} - ${formatD(currE)}`;
-            document.getElementById('th-prev-date').innerText = `${formatD(prevS)} - ${formatD(prevE)}`;
+            const p1S = new Date(p1S_str); p1S.setHours(0,0,0,0);
+            const p1E = new Date(p1E_str); p1E.setHours(23,59,59,999);
+            const p2S = new Date(p2S_str); p2S.setHours(0,0,0,0);
+            const p2E = new Date(p2E_str); p2E.setHours(23,59,59,999);
 
-            processData(currS, currE, prevS, prevE);
+            // Get Selected Machines
+            const selectedMachines = Array.from(document.querySelectorAll('.machine-chk:checked')).map(cb => cb.value);
+
+            if(selectedMachines.length === 0) {
+                alert("กรุณาเลือกเครื่องจักรอย่างน้อย 1 เครื่อง");
+                return;
+            }
+
+            // Update Headers
+            const p1Label = `${formatD(p1S)} - ${formatD(p1E)}`;
+            const p2Label = `${formatD(p2S)} - ${formatD(p2E)}`;
+            document.getElementById('th-prev-date').innerHTML = `ช่วงเวลาที่ 1<br><span class="text-xs font-normal text-slate-400">${p1Label}</span>`;
+            document.getElementById('th-curr-date').innerHTML = `ช่วงเวลาที่ 2<br><span class="text-xs font-normal text-slate-400">${p2Label}</span>`;
+
+            processData(p1S, p1E, p2S, p2E, selectedMachines, p1Label, p2Label);
         }
 
-        function processData(cS, cE, pS, pE) {
-            let sumJobs = 0;
-            let sumQty = 0;
+        function processData(p1S, p1E, p2S, p2E, selectedMachines, p1Label, p2Label) {
             let compData = {};
             let completedJobs = [];
+
+            // Initialize compData with selected machines to ensure they show up even if 0
+            selectedMachines.forEach(m => {
+                compData[m] = { prev: 0, curr: 0 };
+            });
 
             globalData.forEach(row => {
                 const d = new Date(row.date);
                 if(isNaN(d)) return;
 
-                const isCurr = d >= cS && d <= cE;
-                const isPrev = d >= pS && d <= pE;
+                const inP1 = d >= p1S && d <= p1E;
+                const inP2 = d >= p2S && d <= p2E;
+                const m = row.machine ? row.machine.trim() : "ไม่ระบุ";
 
-                if(isCurr) {
-                    sumJobs++;
-                    sumQty += row.qty;
-                }
-
-                if((isCurr || isPrev) && row.jobType !== "ขึ้นตัวอย่าง") {
-                    const m = row.machine || "ไม่ระบุ";
-                    if(!compData[m]) compData[m] = { prev: 0, curr: 0 };
-                    if(isPrev) compData[m].prev += row.qty;
-                    if(isCurr) compData[m].curr += row.qty;
-                }
-
-                if(isCurr && row.status && row.status.toLowerCase() === "completed") {
-                    let diffDays = "-";
-                    if(row.dueDate) {
-                        const due = new Date(row.dueDate);
-                        diffDays = Math.round((due.getTime() - d.getTime()) / (1000*3600*24));
+                // Filter by Selected Machines
+                if (selectedMachines.includes(m)) {
+                    
+                    // Comparison Data (Excluding "ขึ้นตัวอย่าง")
+                    if ((inP1 || inP2) && row.jobType !== "ขึ้นตัวอย่าง") {
+                        if (inP1) compData[m].prev += row.qty;
+                        if (inP2) compData[m].curr += row.qty;
                     }
-                    completedJobs.push({ ...row, diffDays });
+
+                    // Completed Jobs (Period 2 only, includes all types)
+                    if (inP2 && row.status && row.status.toLowerCase() === "completed") {
+                        let diffDays = "-";
+                        if (row.dueDate) {
+                            const due = new Date(row.dueDate);
+                            diffDays = Math.round((due.getTime() - d.getTime()) / (1000*3600*24));
+                        }
+                        completedJobs.push({ ...row, diffDays });
+                    }
                 }
             });
 
-            document.getElementById('sum-jobs').innerHTML = `${sumJobs.toLocaleString()} <span class="text-sm text-slate-500 font-medium">งาน</span>`;
-            document.getElementById('sum-qty').innerHTML = `${sumQty.toLocaleString()} <span class="text-sm text-slate-500 font-medium">ชิ้น</span>`;
-
-            renderComparison(compData, `${formatD(pS)} - ${formatD(pE)}`, `${formatD(cS)} - ${formatD(cE)}`);
+            renderComparison(compData, p1Label, p2Label);
             renderCompleted(completedJobs);
         }
 
-        function renderComparison(dataObj, prevLabel, currLabel) {
+        function renderComparison(dataObj, p1Label, p2Label) {
             const tbody = document.getElementById('comparison-tbody');
             const kpi = document.getElementById('kpi-container');
             tbody.innerHTML = ''; kpi.innerHTML = '';
@@ -248,15 +315,14 @@
             const labels = [], dPrev = [], dCurr = [];
             const machines = Object.keys(dataObj);
             
-            if(machines.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ไม่มีข้อมูล</td></tr>`;
-                if(compChartInstance) compChartInstance.destroy();
-                return;
-            }
+            let hasData = false;
 
             machines.forEach((m, idx) => {
                 const p = dataObj[m].prev;
                 const c = dataObj[m].curr;
+                
+                if (p > 0 || c > 0) hasData = true;
+
                 const diff = c - p;
                 const diffPct = p !== 0 ? ((diff / p) * 100).toFixed(1) : (c > 0 ? 100 : 0);
                 
@@ -268,34 +334,41 @@
                 const trClass = idx % 2 === 0 ? 'tr-alt' : 'bg-white';
 
                 tbody.innerHTML += `
-                    <tr class="${trClass}">
+                    <tr class="${trClass} hover:bg-slate-100 transition-colors">
                         <td class="px-6 py-4 font-bold text-[#3b5998] border-r border-[#cbd5e1]/30">${m}</td>
-                        <td class="px-6 py-4 text-slate-700 border-r border-[#cbd5e1]/30">${p.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-slate-700 border-r border-[#cbd5e1]/30">${c.toLocaleString()}</td>
-                        <td class="px-6 py-4 font-bold ${color} border-r border-[#cbd5e1]/30">${sign}${diff.toLocaleString()}</td>
-                        <td class="px-6 py-4 font-bold ${color}">${arrow} ${Math.abs(diffPct)}%</td>
+                        <td class="px-6 py-4 text-slate-700 border-r border-[#cbd5e1]/30 text-center">${p.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-slate-700 border-r border-[#cbd5e1]/30 text-center">${c.toLocaleString()}</td>
+                        <td class="px-6 py-4 font-bold ${color} border-r border-[#cbd5e1]/30 text-center">${sign}${diff.toLocaleString()}</td>
+                        <td class="px-6 py-4 font-bold ${color} text-center">${arrow} ${Math.abs(diffPct)}%</td>
                     </tr>
                 `;
 
-                const cardBorder = isPos ? 'border-l-4 border-l-[#22c55e]' : 'border-l-4 border-l-[#ef4444]';
-                const iconPath = isPos ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3';
-                const iconColor = isPos ? 'text-white bg-[#22c55e]' : 'text-white bg-[#ef4444]';
-                const txt = isPos ? 'เพิ่มขึ้น' : 'ลดลง';
+                // KPI Card only if there's a difference
+                if (diff !== 0 || p > 0 || c > 0) {
+                    const cardBorder = isPos ? 'border-l-4 border-l-[#22c55e]' : 'border-l-4 border-l-[#ef4444]';
+                    const iconPath = isPos ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3';
+                    const iconColor = isPos ? 'text-white bg-[#22c55e]' : 'text-white bg-[#ef4444]';
+                    const txt = isPos ? 'เพิ่มขึ้น' : 'ลดลง';
 
-                kpi.innerHTML += `
-                    <div class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm flex items-center gap-4 ${cardBorder}">
-                        <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${iconColor}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="${iconPath}"></path></svg>
+                    kpi.innerHTML += `
+                        <div class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm flex items-center gap-4 ${cardBorder}">
+                            <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${iconColor}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="${iconPath}"></path></svg>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-500 mb-0.5">${m}</div>
+                                <div class="font-bold text-base ${color}">${txt} (${sign}${diff.toLocaleString()})</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="text-xs text-slate-500 mb-0.5">${m}</div>
-                            <div class="font-bold text-base ${color}">${txt} (${sign}${diff.toLocaleString()})</div>
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
 
                 labels.push(m); dPrev.push(p); dCurr.push(c);
             });
+
+            if (!hasData) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ไม่มีข้อมูลการผลิตในช่วงเวลาและเครื่องจักรที่เลือก</td></tr>`;
+            }
 
             const ctx = document.getElementById('compChart').getContext('2d');
             if(compChartInstance) compChartInstance.destroy();
@@ -304,8 +377,8 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: prevLabel, data: dPrev, backgroundColor: '#cbd5e1', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.4 },
-                        { label: currLabel, data: dCurr, backgroundColor: '#3b82f6', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.4 }
+                        { label: 'ช่วงที่ 1: ' + p1Label, data: dPrev, backgroundColor: '#cbd5e1', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.4 },
+                        { label: 'ช่วงที่ 2: ' + p2Label, data: dCurr, backgroundColor: '#3b82f6', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.4 }
                     ]
                 },
                 options: {
@@ -325,18 +398,18 @@
             tbody.innerHTML = '';
 
             if(jobs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ไม่มีข้อมูลงานที่เสร็จ (Completed) ในช่วงเวลานี้</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ไม่มีข้อมูลงานที่เสร็จ (Completed) ในช่วงเวลาที่ 2 และเครื่องจักรที่เลือก</td></tr>`;
                 return;
             }
 
             jobs.forEach(j => {
                 const color = isNaN(j.diffDays) ? 'text-slate-500' : (j.diffDays >= 0 ? 'text-[#22c55e]' : 'text-[#ef4444]');
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50">
+                    <tr class="hover:bg-slate-50 border-b border-slate-100">
                         <td class="px-6 py-3 font-medium text-slate-800">${j.job || '-'}</td>
                         <td class="px-6 py-3 font-mono text-slate-500">${j.jobId || '-'}</td>
-                        <td class="px-6 py-3 text-[#3b5998] font-semibold">${j.machine || '-'}</td>
-                        <td class="px-6 py-3"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-bold">Completed</span></td>
+                        <td class="px-6 py-3 text-[#3b5998] font-bold">${j.machine || '-'}</td>
+                        <td class="px-6 py-3"><span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-bold border border-green-200">Completed</span></td>
                         <td class="px-6 py-3 text-right font-bold ${color}">${j.diffDays}</td>
                     </tr>
                 `;
