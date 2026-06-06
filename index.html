@@ -3,157 +3,299 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สรุปและเปรียบเทียบการผลิต V7</title>
+    <title>Production Analytics Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f4f6f9; color: #334155; }
-        .shadow-custom { box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
-        .table-shadow { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .th-bg { background-color: #eaeff5; }
-        .tr-alt { background-color: #f3f6fa; }
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; color: #334155; }
+        
+        /* Premium UI Shadows & Transitions */
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); }
+        .hover-card { transition: all 0.2s ease; }
+        .hover-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
+        
+        /* Custom Scrollbar for tables */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Table Styling */
+        .table-header-blur { backdrop-filter: blur(8px); background-color: rgba(248, 250, 252, 0.9); }
+        
+        /* Selected Machine Chip */
+        .chip-selected { background-color: #eef2ff; border-color: #6366f1; color: #4f46e5; }
+        .chip-unselected { background-color: #ffffff; border-color: #e2e8f0; color: #64748b; }
     </style>
 </head>
-<body class="p-4 md:p-8 max-w-6xl mx-auto">
+<body class="flex h-screen overflow-hidden">
 
-    <!-- Connection Status -->
-    <div id="connection-status" class="fixed top-4 right-4 px-4 py-2 rounded-full text-xs font-bold bg-amber-100 text-amber-800 shadow-md z-50 animate-pulse">
-        กำลังโหลดข้อมูล...
+    <!-- Mobile Header (Visible only on small screens) -->
+    <div class="md:hidden fixed w-full bg-white border-b border-slate-200 z-50 px-4 py-3 flex justify-between items-center glass-card">
+        <div class="font-bold text-indigo-600 text-lg flex items-center gap-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            ProDash
+        </div>
+        <button id="mobile-menu-btn" class="text-slate-500 focus:outline-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
     </div>
 
-    <!-- Title & Controls -->
-    <div class="bg-white p-6 rounded-xl shadow-custom mb-8 border border-slate-100">
-        <div class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-slate-800 mb-2">เปรียบเทียบจำนวนการผลิต</h1>
-            <div class="h-1 w-16 bg-blue-500 mx-auto rounded"></div>
+    <!-- Sidebar (Premium Left Nav) -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col hidden md:flex z-40 transition-transform transform md:translate-x-0 fixed md:static h-full shadow-lg md:shadow-none">
+        <!-- Logo -->
+        <div class="h-16 flex items-center px-6 border-b border-slate-100">
+            <div class="bg-indigo-600 p-1.5 rounded-lg mr-3 shadow-sm shadow-indigo-200">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            </div>
+            <span class="text-lg font-bold text-slate-800 tracking-tight">Production Analytics</span>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200">
-            <!-- Period 1 Control -->
-            <div>
-                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-400"></span> ช่วงเวลาที่ 1 (อดีต)</h3>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <input type="date" id="p1StartDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 focus:outline-none">
-                    <span class="text-slate-400 self-center hidden sm:block">ถึง</span>
-                    <input type="date" id="p1EndDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 focus:outline-none">
-                </div>
-            </div>
-
-            <!-- Period 2 Control -->
-            <div>
-                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span> ช่วงเวลาที่ 2 (ปัจจุบัน)</h3>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <input type="date" id="p2StartDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    <span class="text-slate-400 self-center hidden sm:block">ถึง</span>
-                    <input type="date" id="p2EndDate" class="px-3 py-2 flex-1 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                </div>
-            </div>
+        <!-- Nav Links -->
+        <div class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 mt-2">Dashboards</p>
+            <a href="#" class="flex items-center px-3 py-2.5 bg-indigo-50 text-indigo-700 rounded-lg font-medium group transition-colors">
+                <svg class="w-5 h-5 mr-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                ภาพรวมการผลิต
+            </a>
+            <a href="#" class="flex items-center px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg font-medium group transition-colors">
+                <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                รายงานเครื่องจักร
+            </a>
+            
+            <p class="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 mt-6">Settings</p>
+            <a href="#" class="flex items-center px-3 py-2.5 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg font-medium group transition-colors">
+                <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                การตั้งค่าระบบ
+            </a>
         </div>
-
-        <!-- Machine Selection -->
-        <div class="mt-6 border-t border-slate-200 pt-6">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="font-bold text-slate-700">⚙️ เลือกเครื่องจักรที่ต้องการเปรียบเทียบ:</h3>
-                <div class="space-x-2">
-                    <button onclick="selectAllMachines(true)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">เลือกทั้งหมด</button>
-                    <span class="text-slate-300">|</span>
-                    <button onclick="selectAllMachines(false)" class="text-xs text-slate-500 hover:text-slate-700 font-medium">ล้างการเลือก</button>
-                </div>
-            </div>
-            <div id="machine-filters" class="flex flex-wrap gap-3">
-                <!-- Checkboxes injected here -->
-            </div>
-        </div>
-
-        <div class="mt-6 flex justify-center">
-            <button onclick="applyFilters()" class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-md transition-colors w-full md:w-auto">ประมวลผลข้อมูล</button>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div id="dashboard-content" class="hidden space-y-8">
         
-        <!-- Section 1: Comparison (Mockup Style) -->
-        <div class="bg-white p-6 md:p-8 rounded-xl shadow-custom border border-slate-100">
-            <div class="mb-4">
-                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <span class="text-blue-500">📊</span> ตารางเปรียบเทียบจำนวนการผลิต
-                </h2>
-                <p class="text-xs text-slate-500">เงื่อนไข: สรุปยอดแยกตามเครื่องจักรที่เลือก | <span class="text-red-500">ไม่รวมงาน "ขึ้นตัวอย่าง"</span></p>
-            </div>
-
-            <!-- The Table -->
-            <div class="rounded-lg overflow-x-auto table-shadow mb-6 border border-[#cbd5e1]">
-                <table class="w-full text-left border-collapse min-w-[600px]">
-                    <thead>
-                        <tr class="th-bg text-slate-600 text-sm border-b border-[#cbd5e1]">
-                            <th class="px-6 py-4 font-bold border-r border-white/50">เครื่องจักร</th>
-                            <th class="px-6 py-4 font-bold border-r border-white/50 text-center" id="th-prev-date">ช่วงเวลาที่ 1</th>
-                            <th class="px-6 py-4 font-bold border-r border-white/50 text-center" id="th-curr-date">ช่วงเวลาที่ 2</th>
-                            <th class="px-6 py-4 font-bold border-r border-white/50 text-center">ผลต่าง (ชิ้น)</th>
-                            <th class="px-6 py-4 font-bold text-center">ผลต่าง (%)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="comparison-tbody" class="bg-white">
-                        <!-- Rows -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- KPI Cards -->
-            <div id="kpi-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <!-- Cards -->
-            </div>
-
-            <!-- Chart -->
-            <div class="border border-slate-200 rounded-xl p-6">
-                <div class="h-72 relative">
-                    <canvas id="compChart"></canvas>
+        <!-- User Profile (Bottom) -->
+        <div class="p-4 border-t border-slate-200">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-sm shadow-inner">
+                    TP
                 </div>
-            </div>
-        </div>
-
-        <!-- Section 2: Completed Jobs -->
-        <div class="bg-white p-6 md:p-8 rounded-xl shadow-custom border border-slate-100">
-            <div class="mb-4 flex flex-col md:flex-row md:items-center justify-between">
                 <div>
-                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <span class="text-green-500">✅</span> รายการงานที่ Completed <span class="text-sm font-normal text-slate-500">(ในช่วงเวลาที่ 2)</span>
-                    </h2>
-                    <p class="text-xs text-slate-500">เงื่อนไข: สถานะ = Completed | <span class="text-green-600">รวมงาน "ขึ้นตัวอย่าง" ด้วย</span></p>
+                    <p class="text-sm font-bold text-slate-800">Tanapong</p>
+                    <p class="text-xs text-slate-500">Logistics Admin</p>
                 </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col overflow-hidden pt-14 md:pt-0">
+        
+        <!-- Top Navbar (Desktop) -->
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 z-30 hidden md:flex">
+            <div class="flex items-center bg-slate-100 rounded-lg px-3 py-1.5 w-64 border border-slate-200 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400 transition-all">
+                <svg class="w-4 h-4 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" placeholder="ค้นหา Job ID..." class="bg-transparent border-none outline-none text-sm w-full placeholder-slate-400 text-slate-700">
             </div>
             
-            <div class="overflow-x-auto max-h-96 overflow-y-auto rounded-lg border border-slate-200">
-                <table class="w-full text-left border-collapse text-sm min-w-[600px]">
-                    <thead class="sticky top-0 bg-slate-100 z-10">
-                        <tr class="text-slate-600 font-bold text-xs uppercase border-b border-slate-200">
-                            <th class="px-6 py-4">Job</th>
-                            <th class="px-6 py-4">CODE (รหัสงาน)</th>
-                            <th class="px-6 py-4">Machine</th>
-                            <th class="px-6 py-4">สถานะ</th>
-                            <th class="px-6 py-4 text-right">เสร็จก่อนวันส่ง (วัน)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="completed-tbody" class="divide-y divide-slate-100 text-slate-700 bg-white">
-                        <!-- Rows -->
-                    </tbody>
-                </table>
+            <div class="flex items-center gap-4">
+                <div id="connection-badge" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+                    <span class="w-2 h-2 rounded-full bg-slate-400 animate-pulse" id="conn-dot"></span>
+                    <span id="conn-text">Connecting...</span>
+                </div>
+                <button class="text-slate-400 hover:text-slate-600 relative">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
             </div>
-        </div>
+        </header>
+
+        <!-- Scrollable Dashboard Content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-[#f8fafc] p-4 md:p-8">
+            
+            <!-- Page Header -->
+            <div class="mb-8">
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Analytics Overview</h1>
+                <p class="text-sm text-slate-500 mt-1">วิเคราะห์และเปรียบเทียบประสิทธิภาพการผลิตแบบ Real-time</p>
+            </div>
+
+            <!-- Control Panel (Filters) -->
+            <div class="glass-card rounded-2xl p-6 mb-8 hover-card">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Date Selectors -->
+                    <div class="space-y-4 relative">
+                        <div class="absolute right-0 top-1/2 transform -translate-y-1/2 -mr-4 hidden lg:block text-slate-300">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3 items-center">
+                            <div class="w-full sm:w-1/3 text-sm font-semibold text-slate-600 flex items-center gap-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-slate-300"></div> ช่วงเวลาที่ 1 (ฐาน)
+                            </div>
+                            <input type="date" id="p1StartDate" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all text-slate-700 bg-slate-50">
+                            <span class="text-slate-400 hidden sm:block">-</span>
+                            <input type="date" id="p1EndDate" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all text-slate-700 bg-slate-50">
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-3 items-center">
+                            <div class="w-full sm:w-1/3 text-sm font-semibold text-slate-600 flex items-center gap-2">
+                                <div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div> ช่วงเวลาที่ 2 (ปัจจุบัน)
+                            </div>
+                            <input type="date" id="p2StartDate" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all text-slate-700 bg-white">
+                            <span class="text-slate-400 hidden sm:block">-</span>
+                            <input type="date" id="p2EndDate" class="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all text-slate-700 bg-white">
+                        </div>
+                    </div>
+
+                    <!-- Machine Selection & Action -->
+                    <div class="flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-end mb-3">
+                                <span class="text-sm font-semibold text-slate-600">ตัวกรองเครื่องจักร</span>
+                                <button onclick="toggleAllMachines()" id="btn-toggle-m" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors">เลือกทั้งหมด / ล้าง</button>
+                            </div>
+                            <div id="machine-filters" class="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-2 pb-2">
+                                <!-- Chips injected by JS -->
+                            </div>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button onclick="applyFilters()" class="w-full sm:w-auto px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-bold shadow-md shadow-slate-200 transition-all flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                ประมวลผลข้อมูล
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Skeleton (Shown initially) -->
+            <div id="loading-skeleton" class="space-y-8 animate-pulse hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="h-24 bg-slate-200 rounded-2xl"></div>
+                    <div class="h-24 bg-slate-200 rounded-2xl"></div>
+                    <div class="h-24 bg-slate-200 rounded-2xl"></div>
+                </div>
+                <div class="h-96 bg-slate-200 rounded-2xl"></div>
+            </div>
+
+            <!-- Main Content Container -->
+            <div id="dashboard-body" class="space-y-8 hidden">
+                
+                <!-- KPI Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="kpi-container">
+                    <!-- Cards injected dynamically based on performance -->
+                </div>
+
+                <!-- Comparison Section (Table & Chart) -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    
+                    <!-- Table Side -->
+                    <div class="glass-card rounded-2xl flex flex-col hover-card overflow-hidden">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">ประสิทธิภาพรายเครื่องจักร</h3>
+                                <p class="text-xs text-slate-500 font-medium">ไม่รวมงาน "ขึ้นตัวอย่าง"</p>
+                            </div>
+                            <button onclick="exportToCSV('comparison-table', 'Machine_Comparison')" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Export as CSV">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 overflow-auto max-h-[400px]">
+                            <table class="w-full text-left border-collapse text-sm min-w-[500px]" id="comparison-table">
+                                <thead class="sticky top-0 z-10 table-header-blur shadow-sm">
+                                    <tr class="text-slate-600 font-semibold text-xs uppercase tracking-wider">
+                                        <th class="px-5 py-4 border-b border-slate-200">เครื่องจักร</th>
+                                        <th class="px-5 py-4 border-b border-slate-200 text-right" id="th-prev-date">ช่วงที่ 1</th>
+                                        <th class="px-5 py-4 border-b border-slate-200 text-right" id="th-curr-date">ช่วงที่ 2</th>
+                                        <th class="px-5 py-4 border-b border-slate-200 text-right">ผลต่าง (ชิ้น)</th>
+                                        <th class="px-5 py-4 border-b border-slate-200 text-right">%</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="comparison-tbody" class="divide-y divide-slate-100 bg-white/50">
+                                    <!-- Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Chart Side -->
+                    <div class="glass-card rounded-2xl p-6 hover-card flex flex-col">
+                        <div class="mb-4">
+                            <h3 class="text-base font-bold text-slate-800">แนวโน้มเปรียบเทียบ</h3>
+                            <p class="text-xs text-slate-500 font-medium">Visualization ยอดผลิต (ชิ้น)</p>
+                        </div>
+                        <div class="flex-1 relative min-h-[300px]">
+                            <canvas id="compChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Completed Jobs Table -->
+                <div class="glass-card rounded-2xl hover-card overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800">รายการงานที่เสร็จสิ้น (Completed)</h3>
+                                <p class="text-xs text-slate-500 font-medium">รวมงานทุกประเภท ในช่วงเวลาที่ 2</p>
+                            </div>
+                        </div>
+                        <button onclick="exportToCSV('completed-table', 'Completed_Jobs')" class="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto max-h-[400px]">
+                        <table class="w-full text-left border-collapse text-sm min-w-[700px]" id="completed-table">
+                            <thead class="sticky top-0 z-10 table-header-blur shadow-sm">
+                                <tr class="text-slate-600 font-semibold text-xs uppercase tracking-wider">
+                                    <th class="px-6 py-4 border-b border-slate-200">รหัสงาน (Code)</th>
+                                    <th class="px-6 py-4 border-b border-slate-200">ชื่องาน (Job)</th>
+                                    <th class="px-6 py-4 border-b border-slate-200">เครื่องจักร</th>
+                                    <th class="px-6 py-4 border-b border-slate-200 text-center">สถานะ</th>
+                                    <th class="px-6 py-4 border-b border-slate-200 text-right">ระยะเวลาเทียบกำหนด (วัน)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completed-tbody" class="divide-y divide-slate-100 bg-white/50">
+                                <!-- Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="py-4 text-center text-xs text-slate-400">
+                    &copy; 2026 Production Analytics Dashboard. Powered by Google Apps Script.
+                </div>
+
+            </div>
+        </main>
     </div>
 
+    <!-- Mobile Menu Script -->
+    <script>
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('absolute');
+            sidebar.classList.toggle('h-full');
+        });
+    </script>
+
+    <!-- Main Logic -->
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbywMDzF7GtAFrC7dMZXoE05dZeqFCnFZeON9CO1TZnvn1dR79wHk_mrN6Fx5Wc_Ox0/exec";
         
         let globalData = [];
         let uniqueMachines = [];
         let compChartInstance = null;
-        Chart.register(ChartDataLabels);
+        let allMachinesSelected = true;
 
-        async function fetchData() {
+        Chart.register(ChartDataLabels);
+        Chart.defaults.font.family = "'Sarabun', sans-serif";
+
+        async function init() {
+            showLoading(true);
             try {
                 const res = await fetch(API_URL);
                 if (!res.ok) throw new Error("Network Error");
@@ -162,105 +304,137 @@
 
                 globalData = data;
                 
-                // Extract unique machines for checkboxes
+                // Extract machines
                 const mSet = new Set();
                 globalData.forEach(r => {
                     if (r.machine && r.machine.trim() !== '') mSet.add(r.machine.trim());
                 });
                 uniqueMachines = Array.from(mSet).sort();
-                renderMachineFilters();
+                renderMachineChips();
 
-                // Set Default Dates
+                // Set Dates
                 if(globalData.length > 0) {
                     const validDates = globalData.map(d => new Date(d.date)).filter(d => !isNaN(d));
                     validDates.sort((a,b) => a - b);
                     const maxDate = validDates[validDates.length - 1];
                     
-                    // Period 2 (Current) = Last 7 days
                     const p2End = new Date(maxDate);
-                    const p2Start = new Date(p2End);
-                    p2Start.setDate(p2Start.getDate() - 6);
-                    
+                    const p2Start = new Date(p2End); p2Start.setDate(p2Start.getDate() - 6);
                     document.getElementById('p2EndDate').value = p2End.toISOString().split('T')[0];
                     document.getElementById('p2StartDate').value = p2Start.toISOString().split('T')[0];
 
-                    // Period 1 (Past) = 7 days before Period 2
-                    const p1End = new Date(p2Start);
-                    p1End.setDate(p1End.getDate() - 1);
-                    const p1Start = new Date(p1End);
-                    p1Start.setDate(p1Start.getDate() - 6);
-
+                    const p1End = new Date(p2Start); p1End.setDate(p1End.getDate() - 1);
+                    const p1Start = new Date(p1End); p1Start.setDate(p1Start.getDate() - 6);
                     document.getElementById('p1EndDate').value = p1End.toISOString().split('T')[0];
                     document.getElementById('p1StartDate').value = p1Start.toISOString().split('T')[0];
                 }
 
-                document.getElementById('connection-status').className = "fixed top-4 right-4 px-4 py-2 rounded-full text-xs font-bold bg-green-100 text-green-800 shadow-md z-50";
-                document.getElementById('connection-status').innerText = "✓ เชื่อมต่อแล้ว";
-                document.getElementById('dashboard-content').classList.remove('hidden');
-                
+                updateStatusBadge('success');
+                showLoading(false);
                 applyFilters();
+
             } catch (err) {
-                document.getElementById('connection-status').className = "fixed top-4 right-4 px-4 py-2 rounded-full text-xs font-bold bg-red-100 text-red-800 shadow-md z-50";
-                document.getElementById('connection-status').innerText = "❌ ล้มเหลว";
+                updateStatusBadge('error');
                 alert("Error: " + err.message);
             }
         }
 
-        function renderMachineFilters() {
+        function updateStatusBadge(status) {
+            const badge = document.getElementById('connection-badge');
+            const dot = document.getElementById('conn-dot');
+            const txt = document.getElementById('conn-text');
+            
+            badge.className = "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold";
+            dot.className = "w-2 h-2 rounded-full";
+            
+            if (status === 'success') {
+                badge.classList.add('bg-emerald-50', 'text-emerald-600', 'border', 'border-emerald-200');
+                dot.classList.add('bg-emerald-500');
+                txt.innerText = "Connected";
+            } else if (status === 'error') {
+                badge.classList.add('bg-rose-50', 'text-rose-600', 'border', 'border-rose-200');
+                dot.classList.add('bg-rose-500');
+                txt.innerText = "Offline";
+            }
+        }
+
+        function showLoading(show) {
+            if (show) {
+                document.getElementById('loading-skeleton').classList.remove('hidden');
+                document.getElementById('dashboard-body').classList.add('hidden');
+            } else {
+                document.getElementById('loading-skeleton').classList.add('hidden');
+                document.getElementById('dashboard-body').classList.remove('hidden');
+            }
+        }
+
+        // --- Premium UI: Toggle Chips ---
+        function renderMachineChips() {
             const container = document.getElementById('machine-filters');
             container.innerHTML = '';
             uniqueMachines.forEach(m => {
-                const id = 'chk_' + m.replace(/[^a-zA-Z0-9]/g, '_');
-                container.innerHTML += `
-                    <label class="inline-flex items-center bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
-                        <input type="checkbox" value="${m}" class="machine-chk form-checkbox h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" checked>
-                        <span class="ml-2 text-sm font-medium text-slate-700">${m}</span>
-                    </label>
-                `;
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 chip-selected`;
+                btn.innerText = m;
+                btn.dataset.val = m;
+                btn.dataset.selected = "true";
+                btn.onclick = () => toggleChip(btn);
+                container.appendChild(btn);
             });
         }
 
-        function selectAllMachines(check) {
-            const checkboxes = document.querySelectorAll('.machine-chk');
-            checkboxes.forEach(cb => cb.checked = check);
+        function toggleChip(btn) {
+            const isSelected = btn.dataset.selected === "true";
+            if (isSelected) {
+                btn.dataset.selected = "false";
+                btn.classList.replace('chip-selected', 'chip-unselected');
+            } else {
+                btn.dataset.selected = "true";
+                btn.classList.replace('chip-unselected', 'chip-selected');
+            }
+        }
+
+        function toggleAllMachines() {
+            allMachinesSelected = !allMachinesSelected;
+            const btns = document.querySelectorAll('#machine-filters button');
+            btns.forEach(btn => {
+                btn.dataset.selected = allMachinesSelected ? "true" : "false";
+                if (allMachinesSelected) {
+                    btn.classList.replace('chip-unselected', 'chip-selected');
+                } else {
+                    btn.classList.replace('chip-selected', 'chip-unselected');
+                }
+            });
         }
 
         function formatD(dateObj) {
-            const d = dateObj.getDate();
-            const m = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][dateObj.getMonth()];
-            return `${d} ${m}`;
+            const d = dateObj.getDate().toString().padStart(2, '0');
+            const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+            return `${d}/${m}`;
         }
 
         function applyFilters() {
-            // Get Dates
             const p1S_str = document.getElementById('p1StartDate').value;
             const p1E_str = document.getElementById('p1EndDate').value;
             const p2S_str = document.getElementById('p2StartDate').value;
             const p2E_str = document.getElementById('p2EndDate').value;
 
-            if(!p1S_str || !p1E_str || !p2S_str || !p2E_str) {
-                alert("กรุณาเลือกวันที่ให้ครบทั้ง 2 ช่วงเวลา");
-                return;
-            }
+            if(!p1S_str || !p1E_str || !p2S_str || !p2E_str) return;
 
             const p1S = new Date(p1S_str); p1S.setHours(0,0,0,0);
             const p1E = new Date(p1E_str); p1E.setHours(23,59,59,999);
             const p2S = new Date(p2S_str); p2S.setHours(0,0,0,0);
             const p2E = new Date(p2E_str); p2E.setHours(23,59,59,999);
 
-            // Get Selected Machines
-            const selectedMachines = Array.from(document.querySelectorAll('.machine-chk:checked')).map(cb => cb.value);
+            const selectedMachines = Array.from(document.querySelectorAll('#machine-filters button'))
+                                          .filter(b => b.dataset.selected === "true")
+                                          .map(b => b.dataset.val);
 
-            if(selectedMachines.length === 0) {
-                alert("กรุณาเลือกเครื่องจักรอย่างน้อย 1 เครื่อง");
-                return;
-            }
-
-            // Update Headers
             const p1Label = `${formatD(p1S)} - ${formatD(p1E)}`;
             const p2Label = `${formatD(p2S)} - ${formatD(p2E)}`;
-            document.getElementById('th-prev-date').innerHTML = `ช่วงเวลาที่ 1<br><span class="text-xs font-normal text-slate-400">${p1Label}</span>`;
-            document.getElementById('th-curr-date').innerHTML = `ช่วงเวลาที่ 2<br><span class="text-xs font-normal text-slate-400">${p2Label}</span>`;
+            
+            document.getElementById('th-prev-date').innerHTML = `<span class="text-[10px] text-slate-400 font-normal block leading-none mb-1">อดีต</span>${p1Label}`;
+            document.getElementById('th-curr-date').innerHTML = `<span class="text-[10px] text-indigo-400 font-bold block leading-none mb-1">ปัจจุบัน</span>${p2Label}`;
 
             processData(p1S, p1E, p2S, p2E, selectedMachines, p1Label, p2Label);
         }
@@ -268,11 +442,10 @@
         function processData(p1S, p1E, p2S, p2E, selectedMachines, p1Label, p2Label) {
             let compData = {};
             let completedJobs = [];
+            let totalDiffQty = 0;
+            let totalDiffPctBase = 0;
 
-            // Initialize compData with selected machines to ensure they show up even if 0
-            selectedMachines.forEach(m => {
-                compData[m] = { prev: 0, curr: 0 };
-            });
+            selectedMachines.forEach(m => { compData[m] = { prev: 0, curr: 0 }; });
 
             globalData.forEach(row => {
                 const d = new Date(row.date);
@@ -282,16 +455,12 @@
                 const inP2 = d >= p2S && d <= p2E;
                 const m = row.machine ? row.machine.trim() : "ไม่ระบุ";
 
-                // Filter by Selected Machines
                 if (selectedMachines.includes(m)) {
-                    
-                    // Comparison Data (Excluding "ขึ้นตัวอย่าง")
                     if ((inP1 || inP2) && row.jobType !== "ขึ้นตัวอย่าง") {
-                        if (inP1) compData[m].prev += row.qty;
-                        if (inP2) compData[m].curr += row.qty;
+                        if (inP1) { compData[m].prev += row.qty; totalDiffPctBase += row.qty; }
+                        if (inP2) { compData[m].curr += row.qty; totalDiffQty += row.qty; }
                     }
 
-                    // Completed Jobs (Period 2 only, includes all types)
                     if (inP2 && row.status && row.status.toLowerCase() === "completed") {
                         let diffDays = "-";
                         if (row.dueDate) {
@@ -305,71 +474,113 @@
 
             renderComparison(compData, p1Label, p2Label);
             renderCompleted(completedJobs);
+            
+            // Build Main KPIs
+            buildOverviewKPIs(totalDiffPctBase, totalDiffQty, completedJobs.length);
+        }
+
+        function buildOverviewKPIs(totalPrev, totalCurr, completedCount) {
+            const kpiContainer = document.getElementById('kpi-container');
+            const diff = totalCurr - totalPrev;
+            const isPos = diff >= 0;
+            const pct = totalPrev !== 0 ? ((Math.abs(diff) / totalPrev) * 100).toFixed(1) : 0;
+            
+            const trColor = isPos ? 'text-emerald-600' : 'text-rose-500';
+            const bgIcon = isPos ? 'bg-emerald-100' : 'bg-rose-100';
+            const iconSVG = isPos ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>' : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"></path>';
+
+            kpiContainer.innerHTML = `
+                <!-- Total Volume -->
+                <div class="glass-card rounded-2xl p-5 hover-card border-l-4 border-indigo-500">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-500 mb-1">ยอดผลิตรวมช่วงที่ 2 (ชิ้น)</p>
+                            <h2 class="text-3xl font-bold text-slate-800">${totalCurr.toLocaleString()}</h2>
+                        </div>
+                        <div class="p-2 bg-indigo-50 rounded-lg text-indigo-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Growth -->
+                <div class="glass-card rounded-2xl p-5 hover-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-500 mb-1">อัตราการเติบโตเทียบอดีต</p>
+                            <div class="flex items-end gap-2">
+                                <h2 class="text-3xl font-bold ${trColor}">${isPos?'+':''}${pct}%</h2>
+                                <span class="text-sm font-medium text-slate-400 mb-1">(${isPos?'+':''}${diff.toLocaleString()} ชิ้น)</span>
+                            </div>
+                        </div>
+                        <div class="p-2 ${bgIcon} rounded-lg ${trColor}">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconSVG}</svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Completed Jobs -->
+                <div class="glass-card rounded-2xl p-5 hover-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-500 mb-1">งานที่ Completed</p>
+                            <div class="flex items-end gap-2">
+                                <h2 class="text-3xl font-bold text-slate-800">${completedCount}</h2>
+                                <span class="text-sm font-medium text-slate-400 mb-1">งาน (ช่วงที่ 2)</span>
+                            </div>
+                        </div>
+                        <div class="p-2 bg-emerald-50 rounded-lg text-emerald-500">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function renderComparison(dataObj, p1Label, p2Label) {
             const tbody = document.getElementById('comparison-tbody');
-            const kpi = document.getElementById('kpi-container');
-            tbody.innerHTML = ''; kpi.innerHTML = '';
+            tbody.innerHTML = '';
 
             const labels = [], dPrev = [], dCurr = [];
             const machines = Object.keys(dataObj);
-            
             let hasData = false;
 
-            machines.forEach((m, idx) => {
+            machines.forEach((m) => {
                 const p = dataObj[m].prev;
                 const c = dataObj[m].curr;
-                
                 if (p > 0 || c > 0) hasData = true;
 
                 const diff = c - p;
-                const diffPct = p !== 0 ? ((diff / p) * 100).toFixed(1) : (c > 0 ? 100 : 0);
-                
+                const pct = p !== 0 ? ((Math.abs(diff) / p) * 100).toFixed(1) : (c > 0 ? 100 : 0);
                 const isPos = diff >= 0;
-                const color = isPos ? 'text-[#22c55e]' : 'text-[#ef4444]';
-                const sign = isPos ? '+' : '';
-                const arrow = isPos ? '▲' : '▼';
                 
-                const trClass = idx % 2 === 0 ? 'tr-alt' : 'bg-white';
+                const color = isPos ? 'text-emerald-600' : 'text-rose-500';
+                const bgPill = isPos ? 'bg-emerald-50' : 'bg-rose-50';
+                const sign = isPos ? '+' : '';
+                const icon = isPos ? '↑' : '↓';
 
                 tbody.innerHTML += `
-                    <tr class="${trClass} hover:bg-slate-100 transition-colors">
-                        <td class="px-6 py-4 font-bold text-[#3b5998] border-r border-[#cbd5e1]/30">${m}</td>
-                        <td class="px-6 py-4 text-slate-700 border-r border-[#cbd5e1]/30 text-center">${p.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-slate-700 border-r border-[#cbd5e1]/30 text-center">${c.toLocaleString()}</td>
-                        <td class="px-6 py-4 font-bold ${color} border-r border-[#cbd5e1]/30 text-center">${sign}${diff.toLocaleString()}</td>
-                        <td class="px-6 py-4 font-bold ${color} text-center">${arrow} ${Math.abs(diffPct)}%</td>
+                    <tr class="hover:bg-slate-50 transition-colors group">
+                        <td class="px-5 py-3 font-bold text-slate-700">${m}</td>
+                        <td class="px-5 py-3 text-right text-slate-500 font-medium">${p.toLocaleString()}</td>
+                        <td class="px-5 py-3 text-right text-indigo-700 font-bold bg-indigo-50/30">${c.toLocaleString()}</td>
+                        <td class="px-5 py-3 text-right font-bold ${color}">${sign}${diff.toLocaleString()}</td>
+                        <td class="px-5 py-3 text-right">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${color} ${bgPill}">
+                                ${icon} ${pct}%
+                            </span>
+                        </td>
                     </tr>
                 `;
-
-                // KPI Card only if there's a difference
-                if (diff !== 0 || p > 0 || c > 0) {
-                    const cardBorder = isPos ? 'border-l-4 border-l-[#22c55e]' : 'border-l-4 border-l-[#ef4444]';
-                    const iconPath = isPos ? 'M5 10l7-7m0 0l7 7m-7-7v18' : 'M19 14l-7 7m0 0l-7-7m7 7V3';
-                    const iconColor = isPos ? 'text-white bg-[#22c55e]' : 'text-white bg-[#ef4444]';
-                    const txt = isPos ? 'เพิ่มขึ้น' : 'ลดลง';
-
-                    kpi.innerHTML += `
-                        <div class="bg-white rounded-xl p-4 border border-slate-100 shadow-sm flex items-center gap-4 ${cardBorder}">
-                            <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${iconColor}">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="${iconPath}"></path></svg>
-                            </div>
-                            <div>
-                                <div class="text-xs text-slate-500 mb-0.5">${m}</div>
-                                <div class="font-bold text-base ${color}">${txt} (${sign}${diff.toLocaleString()})</div>
-                            </div>
-                        </div>
-                    `;
-                }
 
                 labels.push(m); dPrev.push(p); dCurr.push(c);
             });
 
             if (!hasData) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ไม่มีข้อมูลการผลิตในช่วงเวลาและเครื่องจักรที่เลือก</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ไม่มีข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
             }
 
+            // Render Premium Chart
             const ctx = document.getElementById('compChart').getContext('2d');
             if(compChartInstance) compChartInstance.destroy();
             compChartInstance = new Chart(ctx, {
@@ -377,18 +588,21 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'ช่วงที่ 1: ' + p1Label, data: dPrev, backgroundColor: '#cbd5e1', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.4 },
-                        { label: 'ช่วงที่ 2: ' + p2Label, data: dCurr, backgroundColor: '#3b82f6', borderRadius: 4, barPercentage: 0.7, categoryPercentage: 0.4 }
+                        { label: p1Label, data: dPrev, backgroundColor: '#cbd5e1', borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.5 },
+                        { label: p2Label, data: dCurr, backgroundColor: '#6366f1', borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.5 }
                     ]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, font:{family:'Sarabun'} } },
-                        datalabels: { anchor: 'end', align: 'top', font: { family: 'Sarabun', weight: 'bold', size: 10 }, color: '#334155', formatter: (val) => val === 0 ? '' : val.toLocaleString() }
+                        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 6, font:{size: 11} } },
+                        datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold', size: 10 }, color: '#64748b', formatter: (val) => val === 0 ? '' : val.toLocaleString() }
                     },
-                    scales: { y: { display: false, grid: { display: false } }, x: { grid: { display: false }, ticks: { font: { family: 'Sarabun', weight: 'bold' }, color: '#475569' } } },
-                    layout: { padding: { top: 20 } }
+                    scales: {
+                        y: { display: false, grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { weight: 'bold' }, color: '#475569' } }
+                    },
+                    layout: { padding: { top: 30 } }
                 }
             });
         }
@@ -398,25 +612,65 @@
             tbody.innerHTML = '';
 
             if(jobs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">ไม่มีข้อมูลงานที่เสร็จ (Completed) ในช่วงเวลาที่ 2 และเครื่องจักรที่เลือก</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400 font-medium">ไม่พบรายการ Completed ในช่วงเวลานี้</td></tr>`;
                 return;
             }
 
             jobs.forEach(j => {
-                const color = isNaN(j.diffDays) ? 'text-slate-500' : (j.diffDays >= 0 ? 'text-[#22c55e]' : 'text-[#ef4444]');
+                const isLate = isNaN(j.diffDays) ? false : j.diffDays < 0;
+                const dColor = isNaN(j.diffDays) ? 'text-slate-400' : (isLate ? 'text-rose-500' : 'text-emerald-600');
+                const badgeStr = isLate ? '<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-xs font-bold">ล่าช้า</span>' : '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-bold">ตรงเวลา</span>';
+
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 border-b border-slate-100">
-                        <td class="px-6 py-3 font-medium text-slate-800">${j.job || '-'}</td>
-                        <td class="px-6 py-3 font-mono text-slate-500">${j.jobId || '-'}</td>
-                        <td class="px-6 py-3 text-[#3b5998] font-bold">${j.machine || '-'}</td>
-                        <td class="px-6 py-3"><span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-md text-xs font-bold border border-green-200">Completed</span></td>
-                        <td class="px-6 py-3 text-right font-bold ${color}">${j.diffDays}</td>
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3.5 font-mono text-slate-500 text-xs">${j.jobId || '-'}</td>
+                        <td class="px-6 py-3.5 font-medium text-slate-800">${j.job || '-'}</td>
+                        <td class="px-6 py-3.5 text-indigo-600 font-semibold">${j.machine || '-'}</td>
+                        <td class="px-6 py-3.5 text-center">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Completed
+                            </span>
+                        </td>
+                        <td class="px-6 py-3.5 text-right font-bold flex items-center justify-end gap-2">
+                            ${badgeStr}
+                            <span class="${dColor}">${j.diffDays} วัน</span>
+                        </td>
                     </tr>
                 `;
             });
         }
 
-        window.onload = fetchData;
+        // --- Export to CSV Utility ---
+        function exportToCSV(tableId, filename) {
+            const table = document.getElementById(tableId);
+            let csv = [];
+            for (let i = 0; i < table.rows.length; i++) {
+                let row = [], cols = table.rows[i].querySelectorAll('td, th');
+                for (let j = 0; j < cols.length; j++) {
+                    let data = cols[j].innerText.replace(/(
+|
+|
+)/gm, " ").trim();
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(','));
+            }
+            downloadCSV(csv.join('\n'), filename + '.csv');
+        }
+
+        function downloadCSV(csv, filename) {
+            let csvFile; let downloadLink;
+            csvFile = new Blob(["\uFEFF"+csv], {type: "text/csv;charset=utf-8;"});
+            downloadLink = document.createElement("a");
+            downloadLink.download = filename;
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        window.onload = init;
     </script>
 </body>
 </html>
