@@ -18,7 +18,7 @@
 
     <div id="loading" class="fixed inset-0 bg-[#0b1c14] z-50 flex flex-col items-center justify-center">
         <div class="spinner mb-4"></div>
-        <p class="text-green-400 font-medium tracking-widest text-sm">กำลังคำนวณ Utilization หมื่นบรรทัด...</p>
+        <p class="text-green-400 font-medium tracking-widest text-sm">กำลังโหลดข้อมูลระดับความเร็วแสง...</p>
     </div>
 
     <div class="bg-gray-900 w-full max-w-7xl rounded-2xl shadow-[0_0_40px_rgba(34,197,94,0.1)] border border-green-500/30 overflow-hidden hidden" id="app-container">
@@ -32,24 +32,27 @@
                     <h1 class="text-xl font-bold text-white">UTILIZATION <span class="text-gray-500 font-normal text-base ml-2">แผนระยะยาว & ประสิทธิภาพเครื่องจักร</span></h1>
                 </div>
             </div>
-            <button onclick="loadData()" class="bg-gray-800 hover:bg-green-600 hover:text-white text-sm px-4 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300">
-                <i class="fa-solid fa-rotate-right mr-2"></i>อัปเดตข้อมูล
-            </button>
+            <div class="flex items-center gap-4">
+                <span id="last-update" class="text-xs text-gray-500"></span>
+                <button onclick="loadData()" class="bg-gray-800 hover:bg-green-600 hover:text-white text-sm px-4 py-2 rounded-lg transition-colors border border-gray-700 text-gray-300">
+                    <i class="fa-solid fa-rotate-right mr-2"></i>อัปเดตข้อมูล
+                </button>
+            </div>
         </div>
 
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm relative border-l-4 border-l-gray-500">
+                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm relative border-l-4 border-l-gray-500 hover:bg-gray-750 transition-colors">
                     <p class="text-sm text-gray-400 mb-1 font-medium">งานทั้งหมดในแผน (Total Plan)</p>
                     <h2 class="text-4xl font-bold text-white" id="kpi-total">-</h2>
                     <i class="fa-solid fa-clipboard-list absolute bottom-5 right-5 text-gray-600 text-3xl opacity-50"></i>
                 </div>
-                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm relative border-l-4 border-l-green-500">
+                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm relative border-l-4 border-l-green-500 hover:bg-gray-750 transition-colors">
                     <p class="text-sm text-gray-400 mb-1 font-medium">ผลิตเสร็จแล้ว (Completed)</p>
                     <h2 class="text-4xl font-bold text-green-400" id="kpi-done">-</h2>
                     <i class="fa-solid fa-check-circle absolute bottom-5 right-5 text-green-900 text-3xl opacity-50"></i>
                 </div>
-                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm relative border-l-4 border-l-blue-500">
+                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-sm relative border-l-4 border-l-blue-500 hover:bg-gray-750 transition-colors">
                     <p class="text-sm text-gray-400 mb-1 font-medium">ระหว่างการผลิต (WIP)</p>
                     <h2 class="text-4xl font-bold text-blue-400" id="kpi-wip">-</h2>
                     <i class="fa-solid fa-spinner absolute bottom-5 right-5 text-blue-900 text-3xl opacity-50"></i>
@@ -79,10 +82,8 @@
     </div>
 
     <script>
-        // ========================================================
-        // ⚠️ เอา Web App URL จาก Google Apps Script (โค้ดล่าสุด) มาวางตรงนี้
-        // ========================================================
-        const API_URL = "https://script.google.com/macros/s/AKfycbxXMcvPMG-cNUjKdioLvRJ0g2NwjktAs_hf55eaa1xNUlfQ0BgCGsY1DDH3Ggm2KrdG/exec"; 
+        // ลิงก์ตรงไปที่ฐานข้อมูล Firebase ของคุณ (เติม .json ต่อท้าย)
+        const FIREBASE_API_URL = "https://production-dashboard-a3d51-default-rtdb.firebaseio.com/dashboardData.json"; 
 
         let utilChart, hoursChart;
 
@@ -91,100 +92,74 @@
         };
 
         function loadData() {
-            if (API_URL === "ใส่_URL_ของ_APPS_SCRIPT_ตรงนี้") {
-                alert("อย่าลืมใส่ API URL นะครับ!");
-                return;
-            }
-
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('app-container').classList.add('hidden');
 
-            fetch(API_URL, { redirect: "follow" })
+            fetch(FIREBASE_API_URL, { cache: "no-store" }) // ป้องกันเบราว์เซอร์จำค่าเก่า
                 .then(response => response.json())
                 .then(data => {
-                    renderDashboard(data);
+                    if (data) {
+                        renderDashboard(data);
+                    } else {
+                        alert('ยังไม่มีข้อมูลในระบบ กรุณากด Run ใน Apps Script 1 ครั้งครับ');
+                    }
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('app-container').classList.remove('hidden');
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('ไม่สามารถดึงข้อมูลได้ กรุณาตรวจสอบลิงก์ Apps Script');
+                    alert('ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
                     document.getElementById('loading').style.display = 'none';
                 });
         }
 
         function renderDashboard(data) {
-            // 1. อัปเดตตัวเลข KPI ด้านบน
-            document.getElementById('kpi-total').innerText = data.kpi.total.toLocaleString();
-            document.getElementById('kpi-done').innerText = data.kpi.done.toLocaleString();
-            document.getElementById('kpi-wip').innerText = data.kpi.wip.toLocaleString();
+            // อัปเดตตัวเลข KPI
+            document.getElementById('kpi-total').innerText = (data.kpi.total || 0).toLocaleString();
+            document.getElementById('kpi-done').innerText = (data.kpi.done || 0).toLocaleString();
+            document.getElementById('kpi-wip').innerText = (data.kpi.wip || 0).toLocaleString();
+            document.getElementById('last-update').innerText = "อัปเดตล่าสุด: " + (data.lastUpdated || "-");
 
-            // เตรียมข้อมูลสำหรับกราฟ (กรองเอาเฉพาะเครื่องจักรที่มีข้อมูล)
-            let validMachines = data.utilization.filter(item => item.machine && item.machine !== "undefined");
+            // เตรียมข้อมูลกราฟ
+            let validMachines = (data.utilization || []).filter(item => item.machine && item.machine !== "undefined");
             
             let categories = validMachines.map(item => item.machine);
             let utilPercent = validMachines.map(item => item.utilization);
             let planHours = validMachines.map(item => item.planHours);
             let actualHours = validMachines.map(item => item.actualHours);
 
-            // 2. วาดกราฟ Utilization % (Bar Chart สีเขียว)
+            // วาดกราฟ Utilization
             if (utilChart) utilChart.destroy();
             utilChart = new ApexCharts(document.querySelector("#utilization-chart"), {
                 series: [{ name: 'Utilization', data: utilPercent }],
-                chart: { type: 'bar', height: 350, background: 'transparent', toolbar: { show: false } },
+                chart: { type: 'bar', height: 350, background: 'transparent', toolbar: { show: false }, animations: { speed: 800 } },
                 colors: ['#4ade80'],
-                plotOptions: {
-                    bar: { borderRadius: 4, dataLabels: { position: 'top' } }
-                },
-                dataLabels: {
-                    enabled: true,
-                    formatter: function (val) { return val + "%"; },
-                    style: { colors: ['#fff'], fontFamily: 'Prompt' },
-                    offsetY: -20
-                },
-                xaxis: { 
-                    categories: categories, 
-                    labels: { style: { colors: '#9ca3af', fontFamily: 'Prompt' } },
-                    axisBorder: { color: '#374151' }
-                },
-                yaxis: { 
-                    max: 100, // ล็อกแกน Y ไว้ที่ 100%
-                    labels: { formatter: function (val) { return val + "%"; }, style: { colors: '#9ca3af', fontFamily: 'Prompt' } } 
-                },
+                plotOptions: { bar: { borderRadius: 4, dataLabels: { position: 'top' } } },
+                dataLabels: { enabled: true, formatter: function (val) { return val + "%"; }, style: { colors: ['#fff'], fontFamily: 'Prompt' }, offsetY: -20 },
+                xaxis: { categories: categories, labels: { style: { colors: '#9ca3af', fontFamily: 'Prompt' } }, axisBorder: { color: '#374151' } },
+                yaxis: { max: 100, labels: { formatter: function (val) { return val + "%"; }, style: { colors: '#9ca3af', fontFamily: 'Prompt' } } },
                 grid: { borderColor: '#374151', strokeDashArray: 4 },
                 tooltip: { theme: 'dark' }
             });
             utilChart.render();
 
-            // 3. วาดกราฟเปรียบเทียบชั่วโมง Plan vs Actual (กราฟแท่งคู่)
+            // วาดกราฟ Plan vs Actual
             if (hoursChart) hoursChart.destroy();
             hoursChart = new ApexCharts(document.querySelector("#hours-chart"), {
                 series: [
                     { name: 'เวลาตามแผน (Plan)', data: planHours },
                     { name: 'เวลาทำงานจริง (Actual)', data: actualHours }
                 ],
-                chart: { type: 'bar', height: 350, background: 'transparent', toolbar: { show: false } },
-                colors: ['#60a5fa', '#facc15'], // สีฟ้า(Plan), สีเหลือง(Actual)
-                plotOptions: {
-                    bar: { horizontal: false, columnWidth: '55%', endingShape: 'rounded', borderRadius: 2 }
-                },
+                chart: { type: 'bar', height: 350, background: 'transparent', toolbar: { show: false }, animations: { speed: 800 } },
+                colors: ['#60a5fa', '#facc15'], 
+                plotOptions: { bar: { horizontal: false, columnWidth: '55%', endingShape: 'rounded', borderRadius: 2 } },
                 dataLabels: { enabled: false },
                 stroke: { show: true, width: 2, colors: ['transparent'] },
-                xaxis: { 
-                    categories: categories,
-                    labels: { style: { colors: '#9ca3af', fontFamily: 'Prompt' } },
-                    axisBorder: { color: '#374151' }
-                },
-                yaxis: { 
-                    title: { text: 'ชั่วโมง (Hours)', style: { color: '#9ca3af', fontFamily: 'Prompt' } },
-                    labels: { style: { colors: '#9ca3af', fontFamily: 'Prompt' } }
-                },
+                xaxis: { categories: categories, labels: { style: { colors: '#9ca3af', fontFamily: 'Prompt' } }, axisBorder: { color: '#374151' } },
+                yaxis: { title: { text: 'ชั่วโมง (Hours)', style: { color: '#9ca3af', fontFamily: 'Prompt' } }, labels: { style: { colors: '#9ca3af', fontFamily: 'Prompt' } } },
                 grid: { borderColor: '#374151', strokeDashArray: 4 },
                 legend: { labels: { colors: '#9ca3af' }, fontFamily: 'Prompt' },
-                tooltip: {
-                    theme: 'dark',
-                    y: { formatter: function (val) { return val + " ชั่วโมง" } }
-                }
+                tooltip: { theme: 'dark', y: { formatter: function (val) { return val + " ชั่วโมง" } } }
             });
             hoursChart.render();
         }
